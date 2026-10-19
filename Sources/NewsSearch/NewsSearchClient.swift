@@ -28,7 +28,6 @@ public struct URLSessionNewsTransport: NewsTransport {
 public protocol NewsSearching: Sendable {
     func headlines(category: NewsCategory, limit: Int) async throws -> [NewsArticle]
     func search(_ query: String, limit: Int) async throws -> [NewsArticle]
-    func trendingTopics(limit: Int) async throws -> [TrendingTopic]
 }
 
 /// Executes feed requests in the caller's process; no server, API key or subprocess.
@@ -79,24 +78,6 @@ public struct NewsSearchClient: NewsSearching {
             }
         }
         throw NewsSearchError.noResults(attempts)
-    }
-
-    /// Google Trends search topics, formatted as hashtags; these are not social-network rankings.
-    public func trendingTopics(limit: Int = 15) async throws -> [TrendingTopic] {
-        try validate(limit: limit)
-        let feed = try url("https://trends.google.com/trending/rss", items: [.init(name: "geo", value: region)])
-        try Task.checkCancellation()
-        let data = try await transport.data(from: feed)
-        try Task.checkCancellation()
-        let items = try FeedParser.parse(data)
-        var seen: Set<String> = []
-        let topics = items.compactMap { item -> TrendingTopic? in
-            let topic = TrendingTopic(topic: item.title, article: item.relatedArticle)
-            guard topic.hashtag.count > 1, seen.insert(topic.hashtag.lowercased()).inserted else { return nil }
-            return topic
-        }
-        guard !topics.isEmpty else { throw NewsSearchError.noResults(["Google Trends: no topics."]) }
-        return Array(topics.prefix(limit))
     }
 
     private func validate(limit: Int) throws {
