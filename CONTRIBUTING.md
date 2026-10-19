@@ -7,7 +7,7 @@ change this repository. The owner controls whether an update is accepted.
 
 Contributions are under AGPL-3.0-only; see [LICENSE](LICENSE). Submit an issue or
 pull request with a concrete problem, focused change, and validation evidence.
-Do not include credentials, model transcripts, build output, or personal data.
+Do not include credentials, private feed data, build output, or personal data.
 
 ```sh
 git clone https://github.com/abhi266raj/NewsSearch.git

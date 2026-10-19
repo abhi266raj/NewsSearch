@@ -1,14 +1,14 @@
 # NewsSearch contributor instructions
 
 NewsSearch is an independent Swift 6 package. Work only on package behavior,
-tests, documentation, or the example app. Do not add application-specific rules.
+tests, documentation, or distribution tooling. Do not add application-specific rules.
 
 - Keep public interfaces source compatible within the documented release range.
-- Keep model input separate from instructions. Preserve raw final responses.
-- Use actors and async/await; inject sessions. Never put credentials in source.
-- Run `Scripts/build-xcframework.sh` before `swift build` and `swift test`. Live model tests are opt-in; do not fake them.
+- Keep feed discovery and parsing generic. Applications own UI, caching and factual verification.
+- Use actors and async/await; inject transports. Never put credentials in source.
+- Run `Scripts/build-xcframework.sh` before `swift build` and `swift test`. Unit tests use deterministic fixtures; live feed checks are opt-in.
 - Verify both products with Scripts/verify-products.sh and Scripts/verify-platforms.sh.
-- Keep README, test instructions, examples, and release notes consistent.
+- Keep README, test instructions, and release notes consistent.
 - Use AGPL-3.0-only for project code; preserve dependency notices.
 - The default branch is `main` and is locked. Never bypass its protection.
   Use feature branches and PRs. Only the owner may temporarily unlock main for

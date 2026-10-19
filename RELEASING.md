@@ -9,7 +9,7 @@ allow force pushes or deletion or grant outsiders direct write access.
 
 `VERSION` is the release trigger. For this update it is **0.1.0**. Include an
 increased stable `MAJOR.MINOR.PATCH` value in the feature PR when a release is
-wanted, and update README, CHANGELOG, and the example's displayed version.
+wanted, and update README and CHANGELOG.
 Normal merges that leave VERSION unchanged run CI without publishing. Decreases,
 leading zeroes, malformed versions, and prerelease suffixes fail validation.
 
