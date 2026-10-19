@@ -1,12 +1,82 @@
 name: CI
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: newssearch-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  test:
-    strategy:
-      matrix:
-        os: [macos-15, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  build-and-test:
+    name: Build and test
+    runs-on: macos-26
+    timeout-minutes: 30
+    outputs:
+      release: ${{ steps.version.outputs.release }}
     steps:
       - uses: actions/checkout@v4
-      - name: Test
+        with:
+          fetch-depth: 0
+      - name: Check version
+        id: version
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          previous=0.0.1
+          base="${BASE_SHA:-$BEFORE_SHA}"
+          if [ -n "$base" ] && git cat-file -e "$base:VERSION" 2>/dev/null; then
+            previous="$(git show "$base:VERSION")"
+          fi
+          increased="$(swift Scripts/Release.swift compare "$(cat VERSION)" "$previous")"
+          release=false
+          if [ "$EVENT" = push ] && [ "$increased" = true ]; then release=true; fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+      - name: Test release decisions and manifest generation
+        run: Scripts/test-release.sh
+      - name: Record toolchain
+        run: |
+          mkdir -p .build/distribution
+          (xcodebuild -version; swift --version; git rev-parse HEAD) > .build/distribution/toolchain.txt
+      - name: Build XCFramework
+        run: Scripts/build-xcframework.sh
+      - name: Build library
+        run: swift build
+      - name: Deterministic tests
         run: swift test
+      - name: Test both products as external consumers
+        run: Scripts/verify-products.sh
+      - name: Compile binary consumers across Apple platforms
+        run: Scripts/verify-platforms.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NewsSearch-XCFramework
+          path: |
+            .build/distribution/NewsSearch.xcframework.zip
+            .build/distribution/checksum.txt
+            .build/distribution/toolchain.txt
+  release:
+    name: Publish increased version
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.outputs.release == 'true'
+    runs-on: macos-26
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: NewsSearch-XCFramework
+          path: .build/distribution
+      - name: Publish verified package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: Scripts/release.sh

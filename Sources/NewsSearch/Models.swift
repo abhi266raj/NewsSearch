@@ -14,19 +14,6 @@ public struct NewsArticle: Equatable, Sendable {
     }
 }
 
-public struct TrendingTopic: Equatable, Sendable {
-    public let topic: String
-    public let article: NewsArticle?
-    public var hashtag: String {
-        "#" + topic.components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
-    }
-
-    public init(topic: String, article: NewsArticle? = nil) {
-        self.topic = topic
-        self.article = article
-    }
-}
-
 public enum NewsCategory: String, CaseIterable, Sendable {
     case trending, india, funnyIndia = "funny_india", proudIndia = "proud_india"
     case emotional, politics, culture, indiaTech = "india_tech", tech, world, business
