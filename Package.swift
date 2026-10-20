@@ -9,7 +9,11 @@ let package = Package(
         .library(name: "NewsSearchSource", targets: ["NewsSearchSource"])
     ],
     targets: [
-        .binaryTarget(name: "NewsSearch", path: ".build/distribution/NewsSearch.xcframework"),
+        .binaryTarget(
+            name: "NewsSearch",
+            url: "https://github.com/abhi266raj/NewsSearch/releases/download/artifacts-0.2.0/NewsSearch.xcframework.zip",
+            checksum: "19266e8b8869febc597d386445b059516bc133ed6541b7bd4c324cf744de3432"
+        ),
         .target(name: "NewsSearchSource", path: "Sources/NewsSearch"),
         .testTarget(name: "NewsSearchTests", dependencies: ["NewsSearchSource"])
     ],
