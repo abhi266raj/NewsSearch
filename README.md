@@ -4,7 +4,7 @@ Swift 6 news discovery running in your app's process. No application server, Pyt
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/abhi266raj/NewsSearch.git", from: "0.1.0")
+.package(url: "https://github.com/abhi266raj/NewsSearch.git", from: "0.2.0")
 // Target dependencies: .product(name: "NewsSearch", package: "NewsSearch")
 ```
 
