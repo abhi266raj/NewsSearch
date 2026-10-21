@@ -229,6 +229,9 @@ public struct NewsSearchClient: NewsSearching {
                     if let cutoff, let pubDate = article.publishedAt, pubDate < cutoff {
                         return false
                     }
+                    if Self.isEditorialDigestOrAudioBriefing(article.title) {
+                        return false
+                    }
                     return seen.insert(article.title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)).inserted
                 }
                 if !articles.isEmpty {
@@ -339,6 +342,44 @@ public struct NewsSearchClient: NewsSearching {
 
     private func validate(limit: Int) throws {
         guard (1...100).contains(limit) else { throw NewsSearchError.invalidInput("News result limit must be between 1 and 100.") }
+    }
+
+    /// Determines whether a headline represents an automated audio briefing, daily digest,
+    /// podcast compilation, or non-story roundup rather than an actual news article.
+    public static func isEditorialDigestOrAudioBriefing(_ title: String) -> Bool {
+        let lower = title.lowercased()
+        let patterns = [
+            "audio briefing",
+            "audio bulletin",
+            "audio express",
+            "news briefing",
+            "daily briefing",
+            "morning briefing",
+            "evening briefing",
+            "news bulletin",
+            "daily digest",
+            "news digest",
+            "morning digest",
+            "evening digest",
+            "daily wrap",
+            "news wrap",
+            "evening wrap",
+            "morning wrap",
+            "daily podcast",
+            "news podcast",
+            "top news podcast",
+            "audio podcast",
+            "news roundup",
+            "daily roundup",
+            "top news audio"
+        ]
+        if patterns.contains(where: { lower.contains($0) }) {
+            return true
+        }
+        if lower.hasPrefix("podcast:") || lower.hasPrefix("podcast -") || lower.hasPrefix("podcast |") {
+            return true
+        }
+        return false
     }
 
     private func url(_ base: String, items: [URLQueryItem]) throws -> URL {
