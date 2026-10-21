@@ -228,3 +228,27 @@ private let rss = Data("""
     let hosts = await transport.requests.map(\.host)
     #expect(hosts == ["www.bing.com"])
 }
+
+@Test func filtersOutAudioBriefingsAndDigests() async throws {
+    let feedWithBriefings = Data("""
+    <rss><channel>
+    <item><title>Top News Audio Briefing - 21 Oct 2026, 6 AM - The Times of India</title><link>https://example.com/audio1</link><source>TOI</source><pubDate>Wed, 21 Oct 2026 06:00:00 +0000</pubDate></item>
+    <item><title>HT Morning Briefing: Top stories today</title><link>https://example.com/audio2</link><source>HT</source><pubDate>Wed, 21 Oct 2026 06:00:00 +0000</pubDate></item>
+    <item><title>Podcast: Today's Economic Wrap</title><link>https://example.com/audio3</link><source>Podcast</source><pubDate>Wed, 21 Oct 2026 06:00:00 +0000</pubDate></item>
+    <item><title>Evening News Bulletin - October 21</title><link>https://example.com/audio4</link><source>AIR</source><pubDate>Wed, 21 Oct 2026 06:00:00 +0000</pubDate></item>
+    <item><title>Daily News Digest: Everything you need to know</title><link>https://example.com/audio5</link><source>Digest</source><pubDate>Wed, 21 Oct 2026 06:00:00 +0000</pubDate></item>
+    <item><title>ISRO Gaganyaan Mission Astronauts Complete Final Tests</title><link>https://example.com/real-news</link><source>ISRO</source><pubDate>Wed, 21 Oct 2026 06:00:00 +0000</pubDate></item>
+    </channel></rss>
+    """.utf8)
+
+    let transport = FixtureTransport([.success(feedWithBriefings)])
+    let client = NewsSearchClient(
+        transport: transport,
+        cache: NewsSearchCache(),
+        now: { Date(timeIntervalSince1970: 1792562400.0) } // Wed, 21 Oct 2026 06:00:00 +0000
+    )
+
+    let articles = try await client.search("India")
+    #expect(articles.count == 1)
+    #expect(articles[0].title == "ISRO Gaganyaan Mission Astronauts Complete Final Tests")
+}
