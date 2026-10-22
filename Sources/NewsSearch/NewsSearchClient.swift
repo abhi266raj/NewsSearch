@@ -27,6 +27,7 @@ public struct URLSessionNewsTransport: NewsTransport {
 
 public protocol NewsSearching: Sendable {
     func headlines(category: NewsCategory, limit: Int) async throws -> [NewsArticle]
+    func headlines(category: NewsCategory, location: String?, limit: Int) async throws -> [NewsArticle]
     func search(_ query: String, limit: Int) async throws -> [NewsArticle]
 }
 
@@ -37,6 +38,14 @@ public extension NewsSearching {
 
     func headlines(category: NewsCategory) async throws -> [NewsArticle] {
         try await headlines(category: category, limit: 20)
+    }
+
+    func headlines(category: NewsCategory, location: String?) async throws -> [NewsArticle] {
+        try await headlines(category: category, location: location, limit: 20)
+    }
+
+    func headlines(category: NewsCategory, location: String?, limit: Int) async throws -> [NewsArticle] {
+        try await headlines(category: category, limit: limit)
     }
 
     func search(_ query: String) async throws -> [NewsArticle] {
@@ -62,12 +71,14 @@ public struct NewsSearchConfiguration: Sendable, Equatable {
     public static let defaultSearchDuration: TimeInterval = 24 * 3600 // 24 hours
     public static let defaultCacheDuration: TimeInterval = 6 * 3600   // 6 hours
     public static let defaultProviders: [NewsRSSProvider] = [.google, .bing]
+    public static let defaultLocation: String = "India"
 
     public var rssProviders: [NewsRSSProvider]
     public var searchDuration: TimeInterval
     public var cacheDuration: TimeInterval
     public var region: String
     public var language: String
+    public var location: String
 
     public static let `default` = NewsSearchConfiguration()
 
@@ -76,13 +87,15 @@ public struct NewsSearchConfiguration: Sendable, Equatable {
         searchDuration: TimeInterval = defaultSearchDuration,
         cacheDuration: TimeInterval = defaultCacheDuration,
         region: String = "IN",
-        language: String = "en"
+        language: String = "en",
+        location: String = defaultLocation
     ) {
         self.rssProviders = rssProviders
         self.searchDuration = searchDuration
         self.cacheDuration = cacheDuration
         self.region = region
         self.language = language
+        self.location = location
     }
 }
 
@@ -130,6 +143,7 @@ public struct NewsSearchClient: NewsSearching {
     public let configuration: NewsSearchConfiguration
     public var region: String { configuration.region }
     public var language: String { configuration.language }
+    public var location: String { configuration.location }
     public var searchDuration: TimeInterval { configuration.searchDuration }
     public var cacheDuration: TimeInterval { configuration.cacheDuration }
     public var rssProviders: [NewsRSSProvider] { configuration.rssProviders }
@@ -154,6 +168,7 @@ public struct NewsSearchClient: NewsSearching {
         transport: any NewsTransport = URLSessionNewsTransport(),
         region: String = "IN",
         language: String = "en",
+        location: String = NewsSearchConfiguration.defaultLocation,
         searchDuration: TimeInterval = defaultSearchDuration,
         cacheDuration: TimeInterval = defaultCacheDuration,
         rssProviders: [NewsRSSProvider] = defaultProviders,
@@ -165,31 +180,41 @@ public struct NewsSearchClient: NewsSearching {
             searchDuration: searchDuration,
             cacheDuration: cacheDuration,
             region: region,
-            language: language
+            language: language,
+            location: location
         )
         self.init(configuration: config, transport: transport, cache: cache, now: now)
     }
 
     public func headlines(category: NewsCategory, limit: Int) async throws -> [NewsArticle] {
-        try await headlines(category: category, limit: limit, duration: nil, providers: nil, bypassCache: false)
+        try await headlines(category: category, location: nil, limit: limit, duration: nil, providers: nil, bypassCache: false)
+    }
+
+    public func headlines(category: NewsCategory, location: String?, limit: Int) async throws -> [NewsArticle] {
+        try await headlines(category: category, location: location, limit: limit, duration: nil, providers: nil, bypassCache: false)
     }
 
     public func headlines(
         category: NewsCategory = .trending,
+        location: String? = nil,
         limit: Int = 20,
         duration: TimeInterval? = nil,
         providers: [NewsRSSProvider]? = nil,
         bypassCache: Bool = false
     ) async throws -> [NewsArticle] {
-        try await search(category.query, limit: limit, duration: duration, providers: providers, bypassCache: bypassCache)
+        let loc = (location ?? self.location).trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedLocation = loc.isEmpty ? NewsSearchConfiguration.defaultLocation : loc
+        let q = category.query(location: resolvedLocation)
+        return try await search(q, location: resolvedLocation, limit: limit, duration: duration, providers: providers, bypassCache: bypassCache)
     }
 
     public func search(_ query: String, limit: Int) async throws -> [NewsArticle] {
-        try await search(query, limit: limit, duration: nil, providers: nil, bypassCache: false)
+        try await search(query, location: nil, limit: limit, duration: nil, providers: nil, bypassCache: false)
     }
 
     public func search(
         _ query: String,
+        location: String? = nil,
         limit: Int = 20,
         duration: TimeInterval? = nil,
         providers: [NewsRSSProvider]? = nil,
@@ -199,6 +224,8 @@ public struct NewsSearchClient: NewsSearching {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw NewsSearchError.invalidInput("Enter a news search query.") }
 
+        let loc = (location ?? self.location).trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedLocation = loc.isEmpty ? NewsSearchConfiguration.defaultLocation : loc
         let effectiveDuration = duration ?? searchDuration
         let effectiveCache = cacheDuration
         let effectiveProviders = providers ?? rssProviders
@@ -208,7 +235,7 @@ public struct NewsSearchClient: NewsSearching {
         let now = nowProvider()
 
         let providersKey = effectiveProviders.map(\.rawValue).joined(separator: ",")
-        let cacheKey = "\(region)|\(language)|\(providersKey)|\(trimmed.lowercased())|\(effectiveDuration)"
+        let cacheKey = "\(region)|\(language)|\(resolvedLocation.lowercased())|\(providersKey)|\(trimmed.lowercased())|\(effectiveDuration)"
         if !bypassCache && effectiveCache > 0 {
             if let cached = await cache.get(key: cacheKey, maxAge: effectiveCache, now: now), !cached.isEmpty {
                 return Array(cached.prefix(limit))
@@ -301,10 +328,13 @@ public struct NewsSearchClient: NewsSearching {
     /// Generates the RSS feed URL for a news category.
     public func feedURL(
         for category: NewsCategory,
+        location: String? = nil,
         provider: NewsRSSProvider = .google,
         duration: TimeInterval? = nil
     ) throws -> URL {
-        try feedURL(for: category.query, provider: provider, duration: duration)
+        let loc = (location ?? self.location).trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedLocation = loc.isEmpty ? NewsSearchConfiguration.defaultLocation : loc
+        return try feedURL(for: category.query(location: resolvedLocation), provider: provider, duration: duration)
     }
 
     private func googleQuery(for query: String, duration: TimeInterval) -> String {

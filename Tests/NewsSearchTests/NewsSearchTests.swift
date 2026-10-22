@@ -252,3 +252,54 @@ private let rss = Data("""
     #expect(articles.count == 1)
     #expect(articles[0].title == "ISRO Gaganyaan Mission Astronauts Complete Final Tests")
 }
+
+@Test func defaultLocationIsIndiaAndSupportsCustomLocationInQueriesAndLabels() {
+    #expect(NewsSearchConfiguration.defaultLocation == "India")
+    let client = NewsSearchClient()
+    #expect(client.location == "India")
+
+    // Default India labels and queries
+    #expect(NewsCategory.trending.label == "🔥 India Trending & Viral")
+    #expect(NewsCategory.india.label == "🇮🇳 India Top Stories & Breaking")
+    #expect(NewsCategory.politics.label == "🏛️ Indian Politics, Elections & Governance")
+    #expect(NewsCategory.trending.query(location: "India") == "India viral trending")
+    #expect(NewsCategory.india.query(location: "India") == "India breaking news")
+
+    // Custom location labels and queries
+    #expect(NewsCategory.trending.label(location: "Mumbai") == "🔥 Mumbai Trending & Viral")
+    #expect(NewsCategory.india.label(location: "Mumbai") == "📍 Mumbai Top Stories & Breaking")
+    #expect(NewsCategory.funnyIndia.label(location: "Mumbai") == "😂 Mumbai Quirky, Bizarre & Funny")
+    #expect(NewsCategory.politics.label(location: "Mumbai") == "🏛️ Mumbai Politics & Governance")
+    #expect(NewsCategory.business.label(location: "Mumbai") == "📈 Mumbai Business & Economy")
+
+    #expect(NewsCategory.trending.query(location: "Mumbai") == "Mumbai viral trending")
+    #expect(NewsCategory.india.query(location: "Mumbai") == "Mumbai breaking news")
+    #expect(NewsCategory.politics.query(location: "Mumbai") == "Mumbai (politics OR elections OR governance OR government)")
+    #expect(NewsCategory.business.query(location: "Mumbai") == "Mumbai (business OR economy OR stock market OR inflation)")
+
+    // Empty or whitespace falls back to India
+    #expect(NewsCategory.trending.label(location: "   ") == "🔥 India Trending & Viral")
+    #expect(NewsCategory.india.query(location: "") == "India breaking news")
+}
+
+@Test func headlinesAndFeedURLsRespectSpecifiedLocation() async throws {
+    let transport = FixtureTransport([.success(rss)])
+    let client = NewsSearchClient(
+        configuration: NewsSearchConfiguration(location: "India"),
+        transport: transport,
+        cache: NewsSearchCache(),
+        now: { Date(timeIntervalSince1970: baseTimestamp + 3600) }
+    )
+
+    // Override location in headlines call
+    let articles = try await client.headlines(category: .india, location: "Delhi", limit: 5)
+    #expect(articles.count == 1)
+    let request = try #require(await transport.requests.first)
+    let query = URLComponents(url: request, resolvingAgainstBaseURL: false)?.queryItems
+    #expect(query?.first(where: { $0.name == "q" })?.value == "Delhi breaking news when:24h")
+
+    // Feed URLs for custom location
+    let url = try client.feedURL(for: .trending, location: "Bengaluru")
+    let feedQuery = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
+    #expect(feedQuery?.first(where: { $0.name == "q" })?.value == "Bengaluru viral trending when:24h")
+}
