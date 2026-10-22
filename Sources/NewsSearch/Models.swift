@@ -19,34 +19,80 @@ public enum NewsCategory: String, CaseIterable, Sendable {
     case emotional, politics, culture, indiaTech = "india_tech", tech, world, business
 
     public var label: String {
+        label(location: "India")
+    }
+
+    public func label(location: String = "India") -> String {
+        let loc = location.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayLoc = loc.isEmpty ? "India" : loc
+        let isIndia = displayLoc.caseInsensitiveCompare("India") == .orderedSame
         switch self {
-        case .trending: "🔥 India Trending & Viral"
-        case .india: "🇮🇳 India Top Stories & Breaking"
-        case .funnyIndia: "😂 Desi Quirky, Jugaad & Funny India"
-        case .proudIndia: "🏆 Proud India"
-        case .emotional: "❤️ Emotional India"
-        case .politics: "🏛️ Indian Politics, Elections & Governance"
-        case .culture: "🪔 Indian Culture, Heritage & Festivals"
-        case .indiaTech: "🚀 India Tech, Space (ISRO) & Startups"
-        case .tech: "💻 Technology & AI"
-        case .world: "🌍 World News"
-        case .business: "📈 Business & Economy"
+        case .trending: return isIndia ? "🔥 India Trending & Viral" : "🔥 \(displayLoc) Trending & Viral"
+        case .india: return isIndia ? "🇮🇳 India Top Stories & Breaking" : "📍 \(displayLoc) Top Stories & Breaking"
+        case .funnyIndia: return isIndia ? "😂 Desi Quirky, Jugaad & Funny India" : "😂 \(displayLoc) Quirky, Bizarre & Funny"
+        case .proudIndia: return "🏆 Proud \(displayLoc)"
+        case .emotional: return "❤️ Emotional \(displayLoc)"
+        case .politics: return isIndia ? "🏛️ Indian Politics, Elections & Governance" : "🏛️ \(displayLoc) Politics & Governance"
+        case .culture: return isIndia ? "🪔 Indian Culture, Heritage & Festivals" : "🪔 \(displayLoc) Culture & Heritage"
+        case .indiaTech: return isIndia ? "🚀 India Tech, Space (ISRO) & Startups" : "🚀 \(displayLoc) Tech, Space & Startups"
+        case .tech: return "💻 Technology & AI"
+        case .world: return "🌍 World News"
+        case .business: return isIndia ? "📈 Business & Economy" : "📈 \(displayLoc) Business & Economy"
         }
     }
 
     var query: String {
+        query(location: "India")
+    }
+
+    public func query(location: String = "India") -> String {
+        let loc = location.trimmingCharacters(in: .whitespacesAndNewlines)
+        let searchLoc = loc.isEmpty ? "India" : loc
+        let isIndia = searchLoc.caseInsensitiveCompare("India") == .orderedSame
+
         switch self {
-        case .trending: "India viral trending"
-        case .india: "India breaking news"
-        case .funnyIndia: "India (viral OR bizarre OR hilarious OR jugaad OR quirky)"
-        case .proudIndia: "India (achievement OR award OR breakthrough OR record)"
-        case .emotional: "India (heartwarming OR rescue OR kindness OR inspiring)"
-        case .politics: "India (politics OR elections OR parliament OR governance)"
-        case .culture: "India (culture OR heritage OR festivals OR temples OR art)"
-        case .indiaTech: "(ISRO OR Indian startup OR Digital India OR UPI)"
-        case .tech: "(artificial intelligence OR technology OR NVIDIA OR Apple OR Microsoft)"
-        case .world: "(world news OR international OR diplomacy OR United Nations)"
-        case .business: "(Sensex OR Nifty OR RBI OR Indian economy OR GST)"
+        case .trending:
+            return "\(searchLoc) viral trending"
+        case .india:
+            return "\(searchLoc) breaking news"
+        case .funnyIndia:
+            if isIndia {
+                return "India (viral OR bizarre OR hilarious OR jugaad OR quirky)"
+            } else {
+                return "\(searchLoc) (viral OR bizarre OR hilarious OR quirky)"
+            }
+        case .proudIndia:
+            return "\(searchLoc) (achievement OR award OR breakthrough OR record)"
+        case .emotional:
+            return "\(searchLoc) (heartwarming OR rescue OR kindness OR inspiring)"
+        case .politics:
+            if isIndia {
+                return "India (politics OR elections OR parliament OR governance)"
+            } else {
+                return "\(searchLoc) (politics OR elections OR governance OR government)"
+            }
+        case .culture:
+            if isIndia {
+                return "India (culture OR heritage OR festivals OR temples OR art)"
+            } else {
+                return "\(searchLoc) (culture OR heritage OR festivals OR art OR tradition)"
+            }
+        case .indiaTech:
+            if isIndia {
+                return "(ISRO OR Indian startup OR Digital India OR UPI)"
+            } else {
+                return "\(searchLoc) (startups OR tech innovation OR tech economy)"
+            }
+        case .tech:
+            return "(artificial intelligence OR technology OR NVIDIA OR Apple OR Microsoft)"
+        case .world:
+            return "(world news OR international OR diplomacy OR United Nations)"
+        case .business:
+            if isIndia {
+                return "(Sensex OR Nifty OR RBI OR Indian economy OR GST)"
+            } else {
+                return "\(searchLoc) (business OR economy OR stock market OR inflation)"
+            }
         }
     }
 }

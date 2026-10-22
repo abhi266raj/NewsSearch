@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Parameterized news location across `NewsCategory` queries, labels, and feed discovery.
+- Default location is `"India"`, fully configurable via `NewsSearchConfiguration.location` or per-call parameters in `headlines(category:location:...)` and `search(_:location:...)`.
+- Dynamic category labels and query formatting for any specified city, state, or region.
+
 ## 0.2.1
 
 - Filter out automated audio briefings, daily podcasts, news digests, bulletins, and non-story roundups (e.g. Times of India Top News Audio Briefing).
